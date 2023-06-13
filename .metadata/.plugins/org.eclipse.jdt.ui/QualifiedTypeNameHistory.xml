@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+    <fullyQualifiedTypeName name="de.learnlib.examples.mealy.ExampleCoffeeMachine"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealyBuilder"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.ttt.mealy.TTTLearnerMealy"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.ttt.mealy.TTTLearnerMealyBuilder"/>
+    <fullyQualifiedTypeName name="net.automatalib.graphs.Graph"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealy"/>
+    <fullyQualifiedTypeName name="de.learnlib.util.Experiment"/>
+    <fullyQualifiedTypeName name="de.learnlib.util.Experiment.MealyExperiment"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealyBuilder"/>
+    <fullyQualifiedTypeName name="de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealy"/>
+    <fullyQualifiedTypeName name="java.lang.System"/>
+</qualifiedTypeNameHistroy>

@@ -1,0 +1,58 @@
+package de.learnlib.algorithms.kv;
+
+import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealy;
+import de.learnlib.api.oracle.MembershipOracle;
+import de.learnlib.api.query.DefaultQuery;
+import de.learnlib.api.query.Query;
+import de.learnlib.oracle.equivalence.WpMethodEQOracle;
+import de.learnlib.oracle.membership.SimulatorOracle;
+import de.learnlib.util.QueryUtil;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class QuerySynthesisKV extends KearnsVaziraniMealy {
+
+    private int maxQueries;
+    private int batchSize;
+
+    public QuerySynthesisKV(MembershipOracle<Integer, Character, Integer> oracle, int maxQueries, int batchSize) {
+        super(oracle);
+        this.maxQueries = maxQueries;
+        this.batchSize = batchSize;
+    }
+
+    @Override
+    public void startLearning() {
+        List<Query<Integer, Character, Integer>> queries = generateInitialQueries();
+        int numQueries = queries.size();
+        while (!getHypothesisModel().isCompletelyDefined() && numQueries < maxQueries) {
+            List<Query<Integer, Character, Integer>> batchQueries = generateBatchQueries(queries, batchSize);
+            QueryUtil.normalize(batchQueries);
+            queries.addAll(batchQueries);
+            super.refineHypothesis(batchQueries);
+            numQueries = queries.size();
+        }
+    }
+
+    private List<Query<Integer, Character, Integer>> generateInitialQueries() {
+        List<Query<Integer, Character, Integer>> queries = new ArrayList<>();
+        // generate a set of initial queries, e.g. randomly generate prefixes and suffixes
+        // add the initial queries to the list of queries
+        return queries;
+    }
+
+    private List<Query<Integer, Character, Integer>> generateBatchQueries(List<Query<Integer, Character, Integer>> queries, int batchSize) {
+        SimulatorOracle<Integer, Character, Integer> oracle = new SimulatorOracle<>(getHypothesisModel());
+        WpMethodEQOracle<Integer, Character, Integer> eqOracle = new WpMethodEQOracle<>(oracle);
+        List<Query<Integer, Character, Integer>> batchQueries = new ArrayList<>();
+        for (int i = 0; i < batchSize; i++) {
+            Query<Integer, Character, Integer> query = eqOracle.findCounterExample(getHypothesisModel(), queries);
+            if (query == null) {
+                break;
+            }
+            batchQueries.add(query);
+        }
+        return batchQueries;
+    }
+}
