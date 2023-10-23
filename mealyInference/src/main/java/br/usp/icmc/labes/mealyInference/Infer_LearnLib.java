@@ -44,10 +44,13 @@ import de.learnlib.algorithms.lstar.mealy.ExtensibleLStarMealyBuilder;
 
 import de.learnlib.algorithms.ttt.mealy.TTTLearnerMealy;
 import de.learnlib.algorithms.ttt.mealy.TTTLearnerMealyBuilder;
+import de.learnlib.acex.AcexAnalyzer;
 import de.learnlib.acex.analyzers.AcexAnalyzers;
+import de.learnlib.algorithms.kv.AKVMBuilder;
 import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealy;
 import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealyBuilder;
 import de.learnlib.algorithms.kv.StateInfo;
+import de.learnlib.algorithms.kv.mealy.AdaptiveKVM;
 import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealy;
 import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealyBuilder;
 import de.learnlib.algorithms.dlstar.mealy.ExtensibleDLStarMealy;
@@ -85,6 +88,7 @@ import net.automatalib.graphs.concepts.GraphViewable;
 import net.automatalib.serialization.InputModelDeserializer;
 import net.automatalib.serialization.dot.DOTParsers;
 import net.automatalib.visualization.VisualizationHelper.EdgeAttrs;
+import net.automatalib.words.Alphabet;
 import net.automatalib.words.Word;
 import net.automatalib.visualization.Visualization;
 //import de.learnlib.algorithms.adt.util.MDTUtil;
@@ -142,6 +146,8 @@ public class Infer_LearnLib {
 
 
 	public static <I, O> void main(String[] args) throws Exception {
+		
+		
 
 		// create the command line parser
 		CommandLineParser parser = new BasicParser();
@@ -382,46 +388,7 @@ public class Infer_LearnLib {
 			MealyMachine finalHyp = (MealyMachine) experiment.getFinalHypothesis();
 			
 			
-			if (learnAlgorithm.equals("kv") || learnAlgorithm.equals("ttt") || 
-					learnAlgorithm.equals("adaptive_kv")) {
-				
 
-
-				Visualization.visualize(((GraphViewable) experiment.getFinalHypothesis()).graphView(), true);
-
-				MultiDTree<I, Word<O>, StateInfo<I, Word<O>>> tree = experiment_pair.getLearner_KV().getDiscriminationTree();
-
-//				FileWriter dotFileWriter = new FileWriter("tree.dot");
-				
-//				String dot = MQUtil.toDot(experiment_pair.getLearner_KV().getDiscriminationTree());
-//		        String dot = experiment_pair.getLearner_KV().getDiscriminationTree().toString();
-//		        
-//		        dotFileWriter.write(dot);
-
-		        // Print the DOT file
-//		        System.out.println("DOT file:\n" + dot);
-				
-		        // Traverse the nodes of the discrimination tree and extract the prefixes
-		        for (AbstractWordBasedDTNode<I, Word<O>, StateInfo<I, Word<O>>> prefix : tree.getNodes()) {
-	        		Collection<Entry<Word<O>, AbstractWordBasedDTNode
-	        		<I, Word<O>, StateInfo<I, Word<O>>>>> edges = tree.getOutgoingEdges(prefix);
-	        		
-	        		for(Entry<Word<O>, AbstractWordBasedDTNode<I, Word<O>, StateInfo<I, Word<O>>>> suffix: edges) {
-	        			System.out.println("Suffix: " + suffix.getKey());
-	        			
-		        	if (prefix.getData() == null) {
-		        		System.out.println("Node Prefix: " + prefix.getDiscriminator());
-		        	}
-		        	else {
-		        		
-		        		System.out.println("Leaf Prefix: " + prefix.getDiscriminator());
-		        		}
-		        	}
-		            
-		        }
-
-		    
-			}
 			
 			logger.logConfig("Qsize: "+mealyss.getStates().size());
 			logger.logConfig("Isize: "+mealyss.getInputAlphabet().size());
@@ -597,6 +564,51 @@ public class Infer_LearnLib {
 		return pair;
 	}
 	
+	private static ExperimentAndLearner learningAdaptiveKV_v1(CompactMealy<String, Word<String>> mealyss,
+			MembershipOracle<String, Word<Word<String>>> mqOracle,
+			EquivalenceOracle<MealyMachine<?, String, ?, Word<String>>, String, Word<Word<String>>> eqOracle,
+			ObservationTableCEXHandler<Object, Object> handler, ClosingStrategy<Object, Object> strategy, File reused_file)
+					throws IOException {
+		
+		
+		MyObservationTable my_ot = OTUtils.getInstance().readOT(reused_file, mealyss.getInputAlphabet());
+
+		List<Word<String>> prefixes = my_ot.getPrefixes();
+		List<Word<String>> suffixes = my_ot.getSuffixes();
+		
+		System.out.println("given Prefixes: ");
+		System.out.println(prefixes);
+
+		
+		System.out.println("given Suffixes: ");
+		System.out.println(suffixes);
+
+
+		System.out.println("given Alphabet: ");
+		System.out.print(mealyss.getInputAlphabet());
+		
+		AKVMBuilder AKVMbuilder = new AKVMBuilder<>();
+
+
+		// construct K&V instance 		
+		AKVMbuilder.setAlphabet(mealyss.getInputAlphabet());
+		AKVMbuilder.setOracle(mqOracle);
+		AKVMbuilder.setInitialPrefixes(prefixes);
+		AKVMbuilder.setInitialSuffixes(suffixes);
+
+		
+
+		AdaptiveKVM<String,Word<String>> learner = AKVMbuilder.create();
+		
+
+
+		// The experiment will execute the main loop of active learning
+		MealyExperiment<String, Word<String>> experiment = new MealyExperiment<String, Word<String>> (learner, eqOracle, mealyss.getInputAlphabet());
+		
+		ExperimentAndLearner pair = new ExperimentAndLearner(learner, experiment);
+		return pair;
+	}
+	
 	private static ExperimentAndLearner learningAdaptiveKV(CompactMealy<String, Word<String>> mealyss,
 			MembershipOracle<String, Word<Word<String>>> mqOracle,
 			EquivalenceOracle<MealyMachine<?, String, ?, Word<String>>, String, Word<Word<String>>> eqOracle,
@@ -629,6 +641,7 @@ public class Infer_LearnLib {
 		AKVMbuilder.setInitialPrefixes(prefixes);
 		AKVMbuilder.setInitialSuffixes(suffixes);
 
+		
 
 		AdaptiveKearnsVaziraniMealy<String,Word<String>> learner = AKVMbuilder.create();
 		

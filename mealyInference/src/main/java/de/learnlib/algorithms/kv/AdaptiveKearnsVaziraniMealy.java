@@ -9,12 +9,16 @@ import de.learnlib.algorithms.lstar.closing.ClosingStrategies;
 import de.learnlib.algorithms.lstar.closing.ClosingStrategy;
 import de.learnlib.api.oracle.MembershipOracle;
 import de.learnlib.datastructure.discriminationtree.MultiDTree;
+import de.learnlib.datastructure.discriminationtree.model.AbstractWordBasedDTNode;
 import de.learnlib.api.query.DefaultQuery;
 import net.automatalib.automata.transducers.MealyMachine;
 import net.automatalib.automata.transducers.impl.compact.CompactMealy;
 import java.util.*;
+import java.util.Map.Entry;
 
-public class AdaptiveKearnsVaziraniMealy<I, O> extends KearnsVaziraniMealy<I, O> {
+import br.usp.icmc.labes.mealyInference.utils.DotFileGen;
+
+public class AdaptiveKearnsVaziraniMealy <I, O> extends KearnsVaziraniMealy<I, O> {
 
 	private List<Word<I>> suffixes;
 	private List<Word<I>> prefixes;
@@ -38,20 +42,45 @@ public class AdaptiveKearnsVaziraniMealy<I, O> extends KearnsVaziraniMealy<I, O>
     this.prefixes = initialPrefixes;
     this.suffixes = initialSuffixes;
     this.oracle = oracle;
-    initializeDTree(oracle);
+//    initializeDTree(oracle);
   }
 
   private void initializeDTree(MembershipOracle<I, Word<O>> oracle) {
+	  
+	  Word<String> query = Word.fromSymbols("a", "b", "c");
+	  Word<O> output;
     // Traverse the set of prefixes and suffixes to add them to the DTree
     for (Word<I> prefix : this.prefixes) {
-      for (Word<I> suffix : this.suffixes) {
-//        DefaultQuery<I, Word<O>> query = new DefaultQuery<>(prefix.concat(suffix));
-    	  oracle.answerQuery(prefix,suffix);
-      }
+//      for (Word<I> suffix : this.suffixes) {
+//        DefaultQuery<I, Word<O>> query = new DefaultQuery<>(prefix);
+//        	oracle.processQuery(query);
+    	output =oracle.answerQuery(prefix);
+    	System.out.println("MEMBER Counterexample: " + prefix + " --> " + output);
+//        	oracle.addMembershipQuery(query, output);
+//      }
+    }
+
+//    Counterexample: switchIntv rain --> 1 1
+//    Counterexample: switchIntv rain rain rain --> 1 1 0 1
+//    Counterexample: switchPerm switchPerm --> 1 0;
+//    oracle.addMembershipQuery("switchIntv rain", "1 1");
+    
+    for (Word<I> suffix : this.suffixes) {
+//      for (Word<I> suffix : this.suffixes) {
+//        DefaultQuery<I, Word<O>> query = new DefaultQuery<>(suffix);
+//        	oracle.processQuery(query);
+    	    oracle.answerQuery(suffix);
+//      }
     }
     this.discriminationTree = new MultiDTree<>(oracle);
-//    this.discriminationTree.setOracle(oracle);
+    this.discriminationTree.setOracle(oracle);
+//	DotFileGen<I, O> dotgen = new DotFileGen(this.discriminationTree);
+//	dotgen.visualizeTree();
+    
   }
+  
+  
+  
   public net.automatalib.words.Alphabet<I> getAlphabet() {
 		return this.getAlphabet();
 	}

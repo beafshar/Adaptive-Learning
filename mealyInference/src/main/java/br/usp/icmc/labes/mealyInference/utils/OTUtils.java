@@ -186,12 +186,12 @@ public class OTUtils {
 				if (!suffixWord.isEmpty()) {
 					for (String symbolName : symbolNames) {
 						if(!nameToSymbol.containsKey(symbolName)){
-							add = false;
-							if(projection) {
-								continue; // ignore invalid symbols
-							}else {
-								break; // trunk suffix at first invalid symbol
-							}
+//							add = false;
+//							if(projection) {
+//								continue; // ignore invalid symbols
+//							}else {
+//								break; // trunk suffix at first invalid symbol
+//							}
 						}
 						word = word.append(nameToSymbol.get(symbolName));
 						

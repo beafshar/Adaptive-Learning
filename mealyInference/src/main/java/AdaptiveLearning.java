@@ -1,21 +1,15 @@
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
-
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -25,6 +19,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import br.usp.icmc.labes.mealyInference.Infer_LearnLib;
 import br.usp.icmc.labes.mealyInference.utils.ExperimentAndLearner;
+import br.usp.icmc.labes.mealyInference.utils.FileReaderClass;
 import br.usp.icmc.labes.mealyInference.utils.LearnLibProperties;
 import br.usp.icmc.labes.mealyInference.utils.MyObservationTable;
 import br.usp.icmc.labes.mealyInference.utils.OTUtils;
@@ -32,34 +27,30 @@ import br.usp.icmc.labes.mealyInference.utils.Utils;
 import br.usp.icmc.labes.mealyInference.utils.EquivEQOracle.RandomWMethodHypEQOracle;
 import br.usp.icmc.labes.mealyInference.utils.EquivEQOracle.WMethodHypEQOracle;
 import br.usp.icmc.labes.mealyInference.utils.EquivEQOracle.WpMethodHypEQOracle;
+import de.learnlib.algorithms.kv.AKVMBuilder;
+import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealy;
+import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealyBuilder;
+import de.learnlib.algorithms.kv.StateInfo;
+import de.learnlib.algorithms.kv.mealy.AdaptiveKVM;
+import de.learnlib.algorithms.kv.mealy.IncKVM;
+import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealy;
+import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealyBuilder;
 import de.learnlib.algorithms.lstar.ce.ObservationTableCEXHandler;
 import de.learnlib.algorithms.lstar.ce.ObservationTableCEXHandlers;
 import de.learnlib.algorithms.lstar.closing.ClosingStrategies;
 import de.learnlib.algorithms.lstar.closing.ClosingStrategy;
-import de.learnlib.algorithms.lstar.mealy.ExtensibleLStarMealy;
-import de.learnlib.algorithms.lstar.mealy.ExtensibleLStarMealyBuilder;
-
-import de.learnlib.algorithms.ttt.mealy.TTTLearnerMealy;
-import de.learnlib.algorithms.ttt.mealy.TTTLearnerMealyBuilder;
-import de.learnlib.acex.analyzers.AcexAnalyzers;
-import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealy;
-import de.learnlib.algorithms.kv.AdaptiveKearnsVaziraniMealyBuilder;
-import de.learnlib.algorithms.kv.StateInfo;
-import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealy;
-import de.learnlib.algorithms.kv.mealy.KearnsVaziraniMealyBuilder;
-import de.learnlib.algorithms.dlstar.mealy.ExtensibleDLStarMealy;
-
 import de.learnlib.api.SUL;
 import de.learnlib.api.logging.LearnLogger;
 import de.learnlib.api.oracle.EquivalenceOracle;
+import de.learnlib.api.oracle.FixedOutputMembershipOracle;
 import de.learnlib.api.oracle.MembershipOracle;
 import de.learnlib.api.oracle.MembershipOracle.MealyMembershipOracle;
-import de.learnlib.api.statistic.StatisticSUL;
+import de.learnlib.api.query.DefaultQuery;
 
-import de.learnlib.datastructure.observationtable.ObservationTable;
+import de.learnlib.api.statistic.StatisticSUL;
+import de.learnlib.datastructure.discriminationtree.MultiDTree;
 import de.learnlib.datastructure.observationtable.writer.ObservationTableASCIIWriter;
 import de.learnlib.driver.util.MealySimulatorSUL;
-//import de.learnlib.examples.mealy.ExampleCoffeeMachine.Input;
 import de.learnlib.filter.cache.sul.SULCache;
 import de.learnlib.filter.statistic.sul.ResetCounterSUL;
 import de.learnlib.filter.statistic.sul.SymbolCounterSUL;
@@ -70,20 +61,16 @@ import de.learnlib.oracle.equivalence.WpMethodEQOracle;
 import de.learnlib.oracle.equivalence.mealy.RandomWalkEQOracle;
 import de.learnlib.oracle.membership.SULOracle;
 import de.learnlib.util.ExperimentDebug.MealyExperiment;
-import de.learnlib.util.MQUtil;
 import de.learnlib.util.statistics.SimpleProfiler;
-import de.learnlib.datastructure.discriminationtree.MultiDTree;
-import de.learnlib.datastructure.discriminationtree.model.*;
-
 import net.automatalib.automata.transducers.MealyMachine;
 import net.automatalib.automata.transducers.impl.compact.CompactMealy;
 import net.automatalib.commons.util.Pair;
 import net.automatalib.graphs.concepts.GraphViewable;
 import net.automatalib.serialization.InputModelDeserializer;
 import net.automatalib.serialization.dot.DOTParsers;
+import net.automatalib.visualization.Visualization;
 import net.automatalib.visualization.VisualizationHelper.EdgeAttrs;
 import net.automatalib.words.Word;
-import net.automatalib.visualization.Visualization;
 
 
 
@@ -115,7 +102,8 @@ public class AdaptiveLearning {
 	public static final String[] closingStrategiesAvailable = {"CloseFirst" , "CloseShortest"};
 	private static final String RIVEST_SCHAPIRE_ALLSUFFIXES = "RivestSchapireAllSuffixes";
 	public static final String[] cexHandlersAvailable = {"ClassicLStar" , "MalerPnueli", "RivestSchapire", RIVEST_SCHAPIRE_ALLSUFFIXES, "Shahbaz", "Suffix1by1"};
-	public static final String[] learningMethodsAvailable = {"lstar" , "l1","adaptive", "dlstar_v4", "dlstar_v3", "dlstar_v2", "dlstar_v1","dlstar_v0","ttt","kv","adaptive_kv"};
+	public static final String[] learningMethodsAvailable = {"lstar" , "l1","adaptive", "dlstar_v4", "dlstar_v3", "dlstar_v2", "dlstar_v1","dlstar_v0","ttt","kv",
+			"adaptive_kv","adaptive_kv1"};
 	
 	
 	public static final Function<Map<String, String>, Pair<@Nullable String, @Nullable Word<String>>>
@@ -138,6 +126,8 @@ public class AdaptiveLearning {
 	
 
 	public static <I, O> void main(String[] args) throws Exception {
+		
+		
 
 		// create the command line parser
 		CommandLineParser parser = new BasicParser();
@@ -293,6 +283,13 @@ public class AdaptiveLearning {
 				logger.logEvent("Reused queries [resets]: " +((ResetCounterSUL)mq_rst).getStatisticalData().getCount());
 				logger.logEvent("Reused queries [symbols]: "+((SymbolCounterSUL)mq_sym).getStatisticalData().getCount());
 				break;
+			case "adaptive_kv1":
+				logger.logConfig("Method: Adaptive Kearns&Vazirani version 1");
+				experiment_pair = learningAdaptiveKV_v1(mealyss, mqOracle, eqOracle, handler, strategy, obsTable);
+				logger.logEvent("Reused queries [resets]: " +((ResetCounterSUL)mq_rst).getStatisticalData().getCount());
+				logger.logEvent("Reused queries [symbols]: "+((SymbolCounterSUL)mq_sym).getStatisticalData().getCount());
+				break;
+				
 			default:
 				throw new Exception("Invalid learning method selected: "+learnAlgorithm);
 			}
@@ -323,35 +320,34 @@ public class AdaptiveLearning {
 			MealyMachine finalHyp = (MealyMachine) experiment.getFinalHypothesis();
 			
 
-			Visualization.visualize(((GraphViewable) experiment.getFinalHypothesis()).graphView(), true);
-
-			MultiDTree<I, Word<O>, StateInfo<I, Word<O>>> tree = experiment_pair.getLearner_KV().getDiscriminationTree();
-
-//				FileWriter dotFileWriter = new FileWriter("tree.dot");
+//			Visualization.visualize(((GraphViewable) experiment.getFinalHypothesis()).graphView(), true);
 			
-//				String dot = MQUtil.toDot(experiment_pair.getLearner_KV().getDiscriminationTree());
-//		        String dot = experiment_pair.getLearner_KV().getDiscriminationTree().toString();
-//		        
-//		        dotFileWriter.write(dot);
+			MultiDTree<I, Word<O>, StateInfo<I, Word<O>>> tree = new MultiDTree(mqOracle);
 
-	        // Print the DOT file
-//		        System.out.println("DOT file:\n" + dot);
+//			if (learnAlgorithm == "adaptive_kv1") {
+				 tree = experiment_pair.getLearner_AKV().getDiscriminationTree();
+//			}
+//			else {
+//				 tree = experiment_pair.getLearner_KV().getDiscriminationTree();
+//				
+//			}
+			
+			
+			// Get all the queries and their results
+//			eqOracle.findCounterExample(finalHyp, null)
+//			List<DefaultQuery<Word<Character>, Word<Character>>> queries = eqOracle.getCounterExamples();
+//			for (DefaultQuery<Word<Character>, Word<Character>> query : queries) {
+//			    Word<Character> input = query.getInput();
+//			    Word<Character> output = query.getOutput();
+//			    System.out.println("Query: " + input + " --> Result: " + output);
+//			}
+
+//			
+//			DotFileGen<I, O> dotgen = new DotFileGen(tree);
+//			dotgen.visualizeTree();
 
 			
-	        // Traverse the nodes of the discrimination tree and extract the prefixes
-	        for (AbstractWordBasedDTNode<I, Word<O>, StateInfo<I, Word<O>>> prefix : tree.getNodes()) {
-        		Collection<Entry<Word<O>, AbstractWordBasedDTNode
-        		<I, Word<O>, StateInfo<I, Word<O>>>>> edges = tree.getOutgoingEdges(prefix);
-        		System.out.println("Node Prefix: " + prefix.getDiscriminator());
-        	
-        		for(Entry<Word<O>, AbstractWordBasedDTNode<I, Word<O>, StateInfo<I, Word<O>>>> suffix: edges) {
-        			System.out.println("Suffix: " + suffix.getKey());
-
-	            
-	        }
-	        }
-
-		    
+			
 			
 			logger.logConfig("Qsize: "+mealyss.getStates().size());
 			logger.logConfig("Isize: "+mealyss.getInputAlphabet().size());
@@ -387,6 +383,9 @@ public class AdaptiveLearning {
 
 	}
 	
+
+
+
 
 	private static EquivalenceOracle<MealyMachine<?, String, ?, Word<String>>, String, Word<Word<String>>> buildEqOracle(
 			Random rnd_seed, CommandLine line, LearnLogger logger, CompactMealy<String, Word<String>> mealyss,
@@ -481,10 +480,68 @@ public class AdaptiveLearning {
 		}
 		return eqOracle;
 	}
+	
+	private static ExperimentAndLearner learningAdaptiveKV_v1(CompactMealy<String, Word<String>> mealyss,
+			MembershipOracle<String, Word<Word<String>>> mqOracle,
+			EquivalenceOracle<MealyMachine<?, String, ?, Word<String>>, String, Word<Word<String>>> eqOracle,
+			ObservationTableCEXHandler<Object, Object> handler, ClosingStrategy<Object, Object> strategy, File reused_file)
+					throws IOException {
+		
+		
+//		MyObservationTable my_ot = OTUtils.getInstance().readOT(reused_file, mealyss.getInputAlphabet());
+//		FileReaderClass frc = new FileReaderClass(reused_file);
+//		
+//
+//		List<Word<String>> prefixes = frc.getInputs();
+//		List<Word<String>> suffixes = frc.getOutputs();
+//		
+		FixedOutputMembershipOracle fixedOracle =
+			    new FixedOutputMembershipOracle<>(mqOracle);
+//		
+//		
+//
+//		
+//		System.out.println("given Prefixes: ");
+//		System.out.println(prefixes);
+//
+//		
+//		System.out.println("given Suffixes: ");
+//		System.out.println(suffixes);
+//
+//
+//		System.out.println("given Alphabet: ");
+//		System.out.print(mealyss.getInputAlphabet());
+//		
+//		fixedOracle.addFixedOutput(prefixes, suffixes);
+		
+//		fixedOracle.printMap();
+		
+		AKVMBuilder AKVMbuilder = new AKVMBuilder<>();
+
+
+		// construct K&V instance 		
+		AKVMbuilder.setAlphabet(mealyss.getInputAlphabet());
+		AKVMbuilder.setOracle(fixedOracle);
+
+
+		
+
+		IncKVM<String,Word<String>> learner = AKVMbuilder.create();
+		
+
+
+		// The experiment will execute the main loop of active learning
+		MealyExperiment<String, Word<String>> experiment = new MealyExperiment<String, Word<String>> (learner, eqOracle, mealyss.getInputAlphabet());
+		
+		ExperimentAndLearner pair = new ExperimentAndLearner(learner, experiment);
+		return pair;
+	}
+	
 	private static ExperimentAndLearner learningKV(CompactMealy<String, Word<String>> mealyss,
 			MembershipOracle<String, Word<Word<String>>> mqOracle,
 			EquivalenceOracle<MealyMachine<?, String, ?, Word<String>>, String, Word<Word<String>>> eqOracle,
 			ObservationTableCEXHandler<Object, Object> handler, ClosingStrategy<Object, Object> strategy) {
+		
 		
 		// construct K&V instance 
 		KearnsVaziraniMealyBuilder<String,Word<String>> builder = new KearnsVaziraniMealyBuilder<>();
@@ -512,30 +569,34 @@ public class AdaptiveLearning {
 					throws IOException {
 		
 		
-		MyObservationTable my_ot = OTUtils.getInstance().readOT(reused_file, mealyss.getInputAlphabet());
-
-		List<Word<String>> prefixes = my_ot.getPrefixes();
-		List<Word<String>> suffixes = my_ot.getSuffixes();
+//		MyObservationTable my_ot = OTUtils.getInstance().readOT(reused_file, mealyss.getInputAlphabet());
+//
+//		List<Word<String>> prefixes = my_ot.getPrefixes();
+//		List<Word<String>> suffixes = my_ot.getSuffixes();
+//		
+//		System.out.println("given Prefixes: ");
+//		System.out.println(prefixes);
+//
+//		
+//		System.out.println("given Suffixes: ");
+//		System.out.println(suffixes);
+//
+//
+//		System.out.println("given Alphabet: ");
+//		System.out.print(mealyss.getInputAlphabet());
 		
-		System.out.println("given Prefixes: ");
-		System.out.println(prefixes);
+		FixedOutputMembershipOracle fixedOracle =
+			    new FixedOutputMembershipOracle<>(mqOracle);
 
-		
-		System.out.println("given Suffixes: ");
-		System.out.println(suffixes);
-
-
-		System.out.println("given Alphabet: ");
-		System.out.print(mealyss.getInputAlphabet());
 		
 		AdaptiveKearnsVaziraniMealyBuilder AKVMbuilder = new AdaptiveKearnsVaziraniMealyBuilder<>();
 
 
 		// construct K&V instance 		
 		AKVMbuilder.setAlphabet(mealyss.getInputAlphabet());
-		AKVMbuilder.setOracle(mqOracle);
-		AKVMbuilder.setInitialPrefixes(prefixes);
-		AKVMbuilder.setInitialSuffixes(suffixes);
+		AKVMbuilder.setOracle(fixedOracle);
+//		AKVMbuilder.setInitialPrefixes(prefixes);
+//		AKVMbuilder.setInitialSuffixes(suffixes);
 
 
 		AdaptiveKearnsVaziraniMealy<String,Word<String>> learner = AKVMbuilder.create();

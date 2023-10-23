@@ -151,10 +151,16 @@ public class ExperimentDebug<A extends Object> extends Experiment<A>{
                 DefaultQuery<I, D> ce = equivalenceAlgorithm.findCounterExample(hyp, inputs);
                 profileStop(COUNTEREXAMPLE_PROFILE_KEY);
 
+
                 if (ce == null) {
                     return hyp;
                 }
 
+
+
+
+                System.out.println("Counterexample: " + ce.getInput() + " --> " + ce.getOutput());
+                
                 LOGGER.logCounterexample(ce.getInput().toString());
 
                 // next round ...

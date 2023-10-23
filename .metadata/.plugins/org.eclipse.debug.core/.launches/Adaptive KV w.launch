@@ -14,7 +14,7 @@
     <stringAttribute key="org.eclipse.jdt.launching.CLASSPATH_PROVIDER" value="org.eclipse.m2e.launchconfig.classpathProvider"/>
     <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="AdaptiveLearning"/>
     <stringAttribute key="org.eclipse.jdt.launching.MODULE_NAME" value="mealyInference"/>
-    <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="-learn adaptive_kv&#10;-sul /home/beafshar/project/wipeSystem_perm.txt&#10;-ot /home/beafshar/project/reused.ot&#10;-out /home/beafshar/project/output"/>
+    <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="-learn adaptive_kv1&#10;-sul /home/beafshar/project/DynamicLstarM-master/experiments/2019_06_swipeMachine/wipeSystem_perm.txt&#10;-ot  /home/beafshar/project/reused.ot&#10;-out /home/beafshar/project/output"/>
     <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="mealyInference"/>
     <stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.m2e.launchconfig.sourcepathProvider"/>
 </launchConfiguration>
